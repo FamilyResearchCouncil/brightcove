@@ -1,4 +1,4 @@
-<?php namespace App\Facades;
+<?php namespace Frc\Brightcove;
 
 use Frc\Brightcove\BrightcoveApi;
 
