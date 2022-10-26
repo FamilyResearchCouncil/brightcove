@@ -1,14 +1,17 @@
 <?php namespace Frc\Brightcove;
 
-use App\Support\Http\Client\Client;
-use App\Support\Http\Client\PendingRequest;
+//use App\Support\Http\Client\Client;
+//use App\Support\Http\Client\PendingRequest;
+// replaced with:
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client;
+// may cause issues
+
 use Frc\Brightcove\Models\Folder;
 use Frc\Brightcove\Models\Job;
 use Frc\Brightcove\Models\Video;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\UriInterface;
 
 class BrightcoveApi extends PendingRequest
 {
