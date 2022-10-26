@@ -1,0 +1,8 @@
+version: "3.8"
+services:
+    php:
+        image: ethanabrace/php:8.1
+        user: '1000'
+        working_dir: /var/www/html
+        volumes: 
+            - ./:/var/www/html

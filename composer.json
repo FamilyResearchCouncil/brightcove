@@ -1,0 +1,27 @@
+{
+    "name": "frc/brightcove",
+    "description": "Brightcove api library for laravel apps",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Ethan Brace",
+            "email": "ethanabrace@gmail.com"
+        }
+    ],
+    "require": {
+        "laravel/framework": "^8.0|^9.0"
+
+    },
+    "autoload": {
+        "psr-4": {
+            "Frc\\Brightcove\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Frc\\Brightcove\\BrightcoveServiceProvider"
+            ]
+        }
+    }
+}
