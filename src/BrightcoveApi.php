@@ -1,17 +1,20 @@
 <?php namespace Frc\Brightcove;
 
-//use App\Support\Http\Client\Client;
-//use App\Support\Http\Client\PendingRequest;
-// replaced with:
-use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Http\Client;
-// may cause issues
-
+use App\Models\Brightcove\Model;
+use App\Support\Http\Client\Client;
+use App\Support\Http\Client\PendingRequest;
+use Frc\Brightcove\Models\BrightcoveModel;
 use Frc\Brightcove\Models\Folder;
 use Frc\Brightcove\Models\Job;
+use Frc\Brightcove\Models\Playlist;
 use Frc\Brightcove\Models\Video;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\UriInterface;
 
 class BrightcoveApi extends PendingRequest
 {
@@ -23,17 +26,17 @@ class BrightcoveApi extends PendingRequest
     private string $subdomain;
     private string $live_api_key;
     private string $domain;
-    private string $response_data_key;
+    private $response_data_key;
     private bool $skip_hydration = false;
     private $hydration_class;
 
     public function __construct($config)
     {
-        $this->client_id = \Arr::get($config, 'client_id');
-        $this->client_secret = \Arr::get($config, 'client_secret');
-        $this->account_id = \Arr::get($config, 'account_id');
-        $this->version = \Arr::get($config, 'version', 'v1');
-        $this->subdomain = \Arr::get($config, 'subdomain', 'cms.api');
+        $this->client_id = Arr::get($config, 'client_id');
+        $this->client_secret = Arr::get($config, 'client_secret');
+        $this->account_id = Arr::get($config, 'account_id');
+        $this->version = Arr::get($config, 'version', 'v1');
+        $this->subdomain = Arr::get($config, 'subdomain', 'cms.api');
         $this->live_api_key = \Arr::get($config, 'live_key', 'cms.api');
         $this->domain = 'brightcove.com';
 
@@ -122,6 +125,22 @@ class BrightcoveApi extends PendingRequest
         return $this;
     }
 
+    public function playlists($playlist_id = null)
+    {
+        $this->subdomain('cms.api');
+        $this->hydrateWith(Playlist::class);
+
+        $path = 'playlists';
+
+        if ($playlist_id) {
+            $path = "$path/$playlist_id";
+        }
+
+        $this->path($path);
+
+        return $this;
+    }
+
     public function upload($from_url)
     {
         return $this->post('ingest-requests', [
@@ -180,10 +199,16 @@ class BrightcoveApi extends PendingRequest
 
         $this->baseUrl(trim($base_url, '/') . "/{$this->getPath()}");
 
+        // use this when debugging
+//        $baseurl = $this->baseUrl;
+//        dump(compact('method', 'url', 'options', 'baseurl'));
 
         $response = Http::baseUrl($this->baseUrl)
             ->withHeaders($this->options['headers'] ?? [])
             ->send($method, $url, $options);
+
+//        dump($response->json());
+
 
         if (!$this->skip_hydration) {
             $data_key = $this->getResponseDataKey();
@@ -205,6 +230,25 @@ class BrightcoveApi extends PendingRequest
         return $response;
     }
 
+    public function paginate(Callable $closure, string $path = null, array $query = []): void
+    {
+        $limit = Arr::pull($query, 'limit', 100);
+        $offset = Arr::pull($query,'offset', 0);
+
+        do{
+            if (isset($response)) {
+                $offset += $limit;
+            }
+
+            $query = array_merge($query, compact('limit', 'offset'));
+
+            $response = $this->get($path ?? '', $query);
+
+            $output = $closure($response);
+
+        } while ($output !== false && $response->collect()->count() >= $limit);
+    }
+
     /**
      * @return string
      */
@@ -222,7 +266,7 @@ class BrightcoveApi extends PendingRequest
 
     public function accessToken()
     {
-        return \Cache::remember("brightcove-token-" . $this->client_id, app()->environment('production') ? 300 : 0, function () {
+        return \Cache::remember("brightcove-token-" . $this->client_id, 300, function () {
             return Http::asJson()->withBasicAuth($this->client_id, $this->client_secret)
                 ->post("https://oauth.brightcove.com/v4/access_token?grant_type=client_credentials")
                 ->json('access_token');
@@ -234,15 +278,36 @@ class BrightcoveApi extends PendingRequest
         return $this->get('');
     }
 
+    public function first()
+    {
+        $data =  $this->all();
+
+        if ($data instanceof Response) {
+            return array_first($data->json());
+        }else if ($data instanceof Collection) {
+            return $data->first();
+        }else if (is_array($data)) {
+            return array_first($data);
+        }else if ($data instanceof BrightcoveModel) {
+            return $data;
+        }
+
+        throw new \Exception("Unable to determine the first item in the response.");
+    }
+
     public function create(array $data)
     {
         return $this->post('', $data);
     }
 
-    public function hydrateWith($class)
+    public function hydrateWith($class, $data_key = null)
     {
         $this->hydration_class = $class;
         $this->skip_hydration = false;
+
+        if ($data_key) {
+            $this->response_data_key = $data_key;
+        }
 
         return $this;
     }
@@ -289,14 +354,14 @@ class BrightcoveApi extends PendingRequest
     /**
      * @return string
      */
-    public function getResponseDataKey(): string
+    public function getResponseDataKey()
     {
         return $this->response_data_key ?? $this->guessResponseDataKey();
     }
 
     public function guessResponseDataKey(): string
     {
-        if ($this->hydration_class) {
+        if ($this->hydration_class && method_exists($this->hydration_class, 'getResponseDataKey')) {
             return (new $this->hydration_class)->getResponseDataKey();
         }
 

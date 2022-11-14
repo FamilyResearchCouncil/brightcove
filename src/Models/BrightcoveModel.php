@@ -8,7 +8,7 @@ class BrightcoveModel
 {
     use HasAttributes;
 
-    private BrightcoveApi $api;
+    public ?BrightcoveApi $api;
     protected $data_key;
 
     public function __construct($attributes = [], $api_client = null)
@@ -85,5 +85,9 @@ class BrightcoveModel
         return false;
     }
 
+    public function toArray()
+    {
+        return $this->attributesToArray();
+    }
 
 }
