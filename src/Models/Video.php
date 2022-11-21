@@ -4,6 +4,7 @@ use Frc\Oracle\Models\Frc\Item;
 use Frc\Oracle\Models\Frc\ItemAttribute;
 use Frc\Oracle\Models\Frc\ItemPublication;
 use Frc\Oracle\Models\Frc\RelatedItem;
+use Illuminate\Support\Carbon;
 
 class Video extends BrightcoveModel
 {
@@ -34,11 +35,12 @@ class Video extends BrightcoveModel
         }
 
         // 1. find the item_publication for the date in question (date from brightcove video)
-        $publication_item = ItemPublication::connection($this->connection)->where([
-            ['publication_date', today()],
-            ['item_code', 'like', 'LR%'],
-            ['publication_code', 'FRCCOM'],
-        ])
+        $publication_item = ItemPublication::connection($this->connection)
+            ->whereDate('publication_date', Carbon::parse($this->created_at))
+            ->where([
+                ['item_code', 'like', 'LR%'],
+                ['publication_code', 'FRCCOM'],
+            ])
             // throw error if more than one or if none
             ->sole();
 
