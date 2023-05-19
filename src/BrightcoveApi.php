@@ -207,7 +207,7 @@ class BrightcoveApi extends PendingRequest
             ->withHeaders($this->options['headers'] ?? [])
             ->send($method, $url, $options);
 
-        dump($response->json());
+//        dump($response->json());
 
 
         if (!$this->skip_hydration) {
