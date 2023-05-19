@@ -207,7 +207,7 @@ class BrightcoveApi extends PendingRequest
             ->withHeaders($this->options['headers'] ?? [])
             ->send($method, $url, $options);
 
-//        dump($response->json());
+        dump($response->json());
 
 
         if (!$this->skip_hydration) {
@@ -220,7 +220,8 @@ class BrightcoveApi extends PendingRequest
             }
 
             if ($keys->isNotEmpty() && $data === null) {
-                throw new \Exception("No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. Available data keys: " . $keys->join(', '));
+                $information = $keys->join(', ') == 0 ? json_encode($response->json()) : $keys->join(', ');
+                throw new \Exception("No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. Info: $information");
             }
 
             return $this->hydrate($data);
