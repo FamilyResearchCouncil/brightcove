@@ -221,7 +221,8 @@ class BrightcoveApi extends PendingRequest
 
             if ($keys->isNotEmpty() && $data === null) {
                 $information = $keys->join(', ') == 0 ? json_encode($response->json()) : $keys->join(', ');
-                throw new \Exception("No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. Info: $information");
+                $optionsString = json_encode($options);
+                throw new \Exception("ERROR {$method}ing to {$url} with {$optionsString}: No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. Info: $information");
             }
 
             return $this->hydrate($data);
