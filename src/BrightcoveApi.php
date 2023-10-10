@@ -3,6 +3,7 @@
 use App\Models\Brightcove\Model;
 use App\Support\Http\Client\Client;
 use App\Support\Http\Client\PendingRequest;
+use Exception;
 use Frc\Brightcove\Models\BrightcoveModel;
 use Frc\Brightcove\Models\Folder;
 use Frc\Brightcove\Models\Job;
@@ -113,16 +114,9 @@ class BrightcoveApi extends PendingRequest
 
     public function videos($video_id = null)
     {
-        $path = 'videos';
-        $this->hydrateWith(Video::class);
-
-        if ($video_id) {
-            $path = "$path/$video_id";
-        }
-
-        $this->path($path);
-
-        return $this;
+        return $this->cms()
+            ->hydrateWith(Video::class)
+            ->path($video_id ? "videos/$video_id" : "videos");
     }
 
     public function playlists($playlist_id = null)
@@ -199,20 +193,21 @@ class BrightcoveApi extends PendingRequest
 
         $this->baseUrl(trim($base_url, '/') . "/{$this->getPath()}");
 
-        // use this when debugging
-//        $baseurl = $this->baseUrl;
-//        dump(compact('method', 'url', 'options', 'baseurl'));
 
         $response = Http::baseUrl($this->baseUrl)
             ->withHeaders($this->options['headers'] ?? [])
             ->send($method, $url, $options);
 
-//        dump($response->json());
-
+        if ($error = data_get($response->json(), '0.error_code')) {
+            throw new Exception("Brightcove Api Error: ($error) status: {$response->status()}.");
+        }
 
         if (!$this->skip_hydration) {
             $data_key = $this->getResponseDataKey();
-            $data = $response->json($data_key) ?? $response->json(Str::of($data_key)->singular());
+
+            $data = $response->json($data_key)
+                ?? $response->json(str($data_key)->singular());
+
             $keys = $response->collect()->keys();
 
             if ($data === null && isset($response->collect()->first()['id']) || $response->json('id') !== null) {
@@ -220,9 +215,8 @@ class BrightcoveApi extends PendingRequest
             }
 
             if ($keys->isNotEmpty() && $data === null) {
-                $information = $keys->join(', ') == 0 ? json_encode($response->json()) : $keys->join(', ');
                 $optionsString = json_encode($options);
-                throw new \Exception("ERROR {$method}ing to {$url} with {$optionsString}: No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. Info: $information");
+                throw new \Exception("ERROR {$method}ing to {$base_url}/{$url} with {$optionsString}: No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. response: ".$response->collect()->toJson());
             }
 
             return $this->hydrate($data);
