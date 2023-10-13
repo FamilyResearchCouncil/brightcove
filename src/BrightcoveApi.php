@@ -202,7 +202,7 @@ class BrightcoveApi extends PendingRequest
 
         if ($error = data_get($response->json(), '0.error_code')) {
             throw new Exception("Brightcove Api Error: ($error) status: {$response->status()}.\n
-                Request: {$response->request()->method()} {$this->baseUrl}/{$url}\n
+                Request: {$method} {$this->baseUrl}/{$url}\n
                 Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
             ");
         }
