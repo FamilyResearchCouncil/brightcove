@@ -379,12 +379,12 @@ class BrightcoveApi extends PendingRequest
 
         $query = $query->when($query->count() > 1,
             // join multiple queries
-            fn($c) => $c->map(function ($q) {
-                return "($q)";
-            })->join(' AND '),
+            fn($c) => $c->map(fn($q) => "($q)")
+                ->join(' AND '),
 
+            // just use the first
             fn($c) => $c->first()
-        )->filter()->toArray();
+        );
 
         if(!empty($query)){
             data_set($options, 'query.query', $query);
