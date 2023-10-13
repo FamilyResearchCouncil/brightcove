@@ -30,6 +30,7 @@ class BrightcoveApi extends PendingRequest
     private $response_data_key;
     private bool $skip_hydration = false;
     private $hydration_class;
+    private array $query = [];
 
     public function __construct($config)
     {
@@ -105,10 +106,10 @@ class BrightcoveApi extends PendingRequest
             ->get($video_id);
     }
 
-    public function jobs($id = null)
+    public function jobs($id = null, $query = [])
     {
         return $this->hydrateWith(Job::class)->get(
-            trim("jobs/$id", '/')
+            trim("jobs/$id", '/'), $query
         );
     }
 
@@ -138,7 +139,7 @@ class BrightcoveApi extends PendingRequest
     public function upload($from_url)
     {
         return $this->post('ingest-requests', [
-            'master' => [
+            'master'    => [
                 "url" => rtrim($from_url, '#')
             ],
             'callbacks' => [
@@ -175,7 +176,7 @@ class BrightcoveApi extends PendingRequest
         if ($this->domain === 'bcovlive.io') {
             // the live api
             $this->withHeaders([
-                'X-API-KEY' => $this->live_api_key,
+                'X-API-KEY'    => $this->live_api_key,
                 'Content-Type' => 'application/json',
             ]);
 
@@ -196,7 +197,7 @@ class BrightcoveApi extends PendingRequest
 
         $response = Http::baseUrl($this->baseUrl)
             ->withHeaders($this->options['headers'] ?? [])
-            ->send($method, $url, $options);
+            ->send($method, $url, $this->mergeQuery($options));
 
         if ($error = data_get($response->json(), '0.error_code')) {
             throw new Exception("Brightcove Api Error: ($error) status: {$response->status()}.");
@@ -216,7 +217,7 @@ class BrightcoveApi extends PendingRequest
 
             if ($keys->isNotEmpty() && $data === null) {
                 $optionsString = json_encode($options);
-                throw new \Exception("ERROR {$method}ing to {$base_url}/{$url} with {$optionsString}: No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. response: ".$response->collect()->toJson());
+                throw new \Exception("ERROR {$method}ing to {$base_url}/{$url} with {$optionsString}: No data found at key: '$data_key'. Try setting the response data_key on the BrightcoveModel: $this->hydration_class. response: " . $response->collect()->toJson());
             }
 
             return $this->hydrate($data);
@@ -226,12 +227,12 @@ class BrightcoveApi extends PendingRequest
         return $response;
     }
 
-    public function paginate(Callable $closure, string $path = null, array $query = []): void
+    public function paginate(callable $closure, string $path = null, array $query = []): void
     {
         $limit = Arr::pull($query, 'limit', 100);
-        $offset = Arr::pull($query,'offset', 0);
+        $offset = Arr::pull($query, 'offset', 0);
 
-        do{
+        do {
             if (isset($response)) {
                 $offset += $limit;
             }
@@ -269,22 +270,22 @@ class BrightcoveApi extends PendingRequest
         });
     }
 
-    public function all()
+    public function all($query = [])
     {
-        return $this->get('');
+        return $this->get('', $query);
     }
 
     public function first()
     {
-        $data =  $this->all();
+        $data = $this->all();
 
         if ($data instanceof Response) {
             return array_first($data->json());
-        }else if ($data instanceof Collection) {
+        } else if ($data instanceof Collection) {
             return $data->first();
-        }else if (is_array($data)) {
+        } else if (is_array($data)) {
             return array_first($data);
-        }else if ($data instanceof BrightcoveModel) {
+        } else if ($data instanceof BrightcoveModel) {
             return $data;
         }
 
@@ -366,5 +367,31 @@ class BrightcoveApi extends PendingRequest
         }
 
         return 'data';
+    }
+
+    private function mergeQuery(array $options): array
+    {
+        $query = [];
+        $query[] = data_get($options, 'query.query') ?? null;
+        $query[] = $this->query['query'] ?? null;
+
+        $query = collect($query)->filter()->map(function ($q) {
+            return "($q)";
+        })->join(' AND ');
+
+        data_set($options, 'query.query', $query);
+
+        return $options;
+    }
+
+    public function where($value, $key = null, $not = false)
+    {
+        if ($key) {
+            $value = "$key:\"$value\"";
+        }
+
+        $value = $not ? "-$value" : "+$value";
+
+        $this->query['query'] = $value;
     }
 }
