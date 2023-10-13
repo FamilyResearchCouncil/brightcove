@@ -3,6 +3,7 @@
 use App\Models\Brightcove\Model;
 use App\Support\Http\Client\Client;
 use App\Support\Http\Client\PendingRequest;
+use Carbon\Carbon;
 use Exception;
 use Frc\Brightcove\Models\BrightcoveModel;
 use Frc\Brightcove\Models\Folder;
@@ -390,10 +391,10 @@ class BrightcoveApi extends PendingRequest
     private function mergeQuery(array $options): array
     {
         $query = collect();
+
         $query->push(data_get($options, 'query.query') ?? null);
         $query->push($this->query['query'] ?? null);
-        $query = $query->filter();
-
+        $query = $query->flatten()->filter();
 
         $query = $query->when($query->count() > 1,
             // join multiple queries
@@ -413,12 +414,32 @@ class BrightcoveApi extends PendingRequest
 
     public function where($key, $value, $not = false)
     {
-        $value = "$key:\"$value\"";
+        $value = str($value);
+
+        if (!$value->startsWith('[')) {
+            $value = $value->wrap('"');
+        }
+
+        $value = "$key:$value";
 
         $value = $not ? "-$value" : "+$value";
 
-        $this->query['query'] = $value;
+        $this->query['query'][] = $value;
 
         return $this;
+    }
+
+    public function after(Carbon $time)
+    {
+        $time = $time->format('Y-m-d\T00:00:00.000\Z');
+
+        return $this->where('created_at', "[$time TO *]");
+    }
+
+    public function before(Carbon $time)
+    {
+        $time = $time->format('Y-m-d\T00:00:00.000\Z');
+
+        return $this->where('created_at', "[* TO $time]");
     }
 }
