@@ -205,6 +205,7 @@ class BrightcoveApi extends PendingRequest
             throw new Exception("Brightcove Api Error: ($error) status: {$response->status()}.\n
                 Request: {$method} {$this->baseUrl}/{$url}\n
                 Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
+                Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
             ");
         }
 
