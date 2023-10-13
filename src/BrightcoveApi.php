@@ -292,6 +292,24 @@ class BrightcoveApi extends PendingRequest
         throw new \Exception("Unable to determine the first item in the response.");
     }
 
+    public function last()
+    {
+        $data = $this->all();
+
+        if ($data instanceof Response) {
+            return array_last($data->json());
+        } else if ($data instanceof Collection) {
+            return $data->last();
+        } else if (is_array($data)) {
+            return array_last($data);
+        } else if ($data instanceof BrightcoveModel) {
+            return $data;
+        }
+
+        throw new \Exception("Unable to determine the last item in the response.");
+    }
+
+
     public function create(array $data)
     {
         return $this->post('', $data);
