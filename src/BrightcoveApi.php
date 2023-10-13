@@ -384,11 +384,9 @@ class BrightcoveApi extends PendingRequest
         return $options;
     }
 
-    public function where($value, $key = null, $not = false)
+    public function where($key, $value, $not = false)
     {
-        if ($key) {
-            $value = "$key:\"$value\"";
-        }
+        $value = "$key:\"$value\"";
 
         $value = $not ? "-$value" : "+$value";
 
