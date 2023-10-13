@@ -23,15 +23,16 @@ class BrightcoveApi extends PendingRequest
     private string $client_id;
     private string $client_secret;
     private string $account_id;
-    private string $version = 'v1';
-    private string $path = '';
-    private string $subdomain;
     private string $live_api_key;
-    private string $domain;
     private $response_data_key;
     private bool $skip_hydration = false;
     private $hydration_class;
-    private array $query = [];
+
+    public array $query = [];
+    public string $version = 'v1';
+    public string $domain;
+    public string $path = '';
+    public string $subdomain;
 
     public function __construct($config)
     {
