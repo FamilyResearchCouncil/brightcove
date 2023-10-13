@@ -272,7 +272,7 @@ class BrightcoveApi extends PendingRequest
 
     public function all($query = [])
     {
-        return $this->get('', $query);
+        return $this->get('', $query)->collect();
     }
 
     public function first()
