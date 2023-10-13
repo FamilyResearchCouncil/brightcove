@@ -5,6 +5,7 @@ use App\Support\Http\Client\Client;
 use App\Support\Http\Client\PendingRequest;
 use Carbon\Carbon;
 use Exception;
+use Frc\Brightcove\Exceptions\NotFoundException;
 use Frc\Brightcove\Models\BrightcoveModel;
 use Frc\Brightcove\Models\Folder;
 use Frc\Brightcove\Models\Job;
@@ -202,11 +203,18 @@ class BrightcoveApi extends PendingRequest
             ->send($method, $url, $this->mergeQuery($options));
 
         if ($error = data_get($response->json(), '0.error_code')) {
-            throw new Exception("Brightcove Api Error: ($error) status: {$response->status()}.\n
-                Request: {$method} {$this->baseUrl}/{$url}\n
-                Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
-                Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
-            ");
+            $message = "Brightcove Api Error: ($error) status: {$response->status()}.\n
+                    Request: {$method} {$this->baseUrl}/{$url}\n
+                    Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
+                    Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
+                ";
+
+
+            if ($response->status() == 404) {
+                throw new NotFoundException($message);
+            }
+
+            throw new Exception($message);
         }
 
         if (!$this->skip_hydration) {
@@ -278,7 +286,11 @@ class BrightcoveApi extends PendingRequest
 
     public function all($query = [])
     {
-        return $this->get('', $query);
+        try {
+            return $this->get('', $query);
+        } catch (NotFoundException $e) {
+            return collect();
+        }
     }
 
     public function first()
@@ -410,7 +422,7 @@ class BrightcoveApi extends PendingRequest
             fn($c) => $c->first()
         );
 
-        if(!empty($query)){
+        if (!empty($query)) {
             data_set($options, 'query.query', $query);
         }
 
