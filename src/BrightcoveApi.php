@@ -391,5 +391,7 @@ class BrightcoveApi extends PendingRequest
         $value = $not ? "-$value" : "+$value";
 
         $this->query['query'] = $value;
+
+        return $this;
     }
 }
