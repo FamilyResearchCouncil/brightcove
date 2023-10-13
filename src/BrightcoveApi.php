@@ -371,15 +371,24 @@ class BrightcoveApi extends PendingRequest
 
     private function mergeQuery(array $options): array
     {
-        $query = [];
-        $query[] = data_get($options, 'query.query') ?? null;
-        $query[] = $this->query['query'] ?? null;
+        $query = collect();
+        $query->push(data_get($options, 'query.query') ?? null);
+        $query->push($this->query['query'] ?? null);
+        $query = $query->filter();
 
-        $query = collect($query)->filter()->map(function ($q) {
-            return "($q)";
-        })->join(' AND ');
 
-        data_set($options, 'query.query', $query);
+        $query = $query->when($query->count() > 1,
+            // join multiple queries
+            fn($c) => $c->map(function ($q) {
+                return "($q)";
+            })->join(' AND '),
+
+            fn($c) => $c->first()
+        )->filter()->toArray();
+
+        if(!empty($query)){
+            data_set($options, 'query.query', $query);
+        }
 
         return $options;
     }
