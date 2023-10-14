@@ -455,7 +455,9 @@ class BrightcoveApi extends PendingRequest
     {
         $request = $response->transferStats->getRequest();
         $error = $response->json('0.error_code');
-        $message = "Brightcove Api Error: ($error) status: {$response->status()}.\n
+        $message = $response->json('0.message');
+
+        $message = "Brightcove $error ({$response->status()}): $message.\n
                 Request: {$request->getMethod()} {$this->baseUrl}/{$request->getUri()->getPath()}\n
                 Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
                 Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n

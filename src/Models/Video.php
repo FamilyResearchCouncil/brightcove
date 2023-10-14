@@ -4,7 +4,12 @@ use Frc\Oracle\Models\Frc\Item;
 use Frc\Oracle\Models\Frc\ItemAttribute;
 use Frc\Oracle\Models\Frc\ItemPublication;
 use Frc\Oracle\Models\Frc\RelatedItem;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon $created_at
+ */
 class Video extends BrightcoveModel
 {
     protected $connection = 'frc';
@@ -12,6 +17,16 @@ class Video extends BrightcoveModel
     /**********************************************
      * methods
      **********************************************/
+    /**
+     * Accessor for $this->created_at
+     */
+    public function createdAt(): Attribute
+    {
+        return Attribute::get(function ($value) {
+            return Carbon::parse($value);
+        });
+    }
+
 
     public function isNew()
     {
