@@ -461,6 +461,7 @@ class BrightcoveApi extends PendingRequest
                 Request: {$request->getMethod()} {$this->baseUrl}/{$request->getUri()->getPath()}\n
                 Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
                 Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
+                Response: " . json_encode($response->json(), JSON_PRETTY_PRINT) . "\n
             ";
 
         match((int)$response->status()){
