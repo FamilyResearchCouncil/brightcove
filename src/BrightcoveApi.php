@@ -12,10 +12,10 @@ use Frc\Brightcove\Models\Job;
 use Frc\Brightcove\Models\Playlist;
 use Frc\Brightcove\Models\Video;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Request;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 
@@ -197,25 +197,16 @@ class BrightcoveApi extends PendingRequest
 
         $this->baseUrl(trim($base_url, '/') . "/{$this->getPath()}");
 
+        $options = $this->mergeQuery($options);
 
         $response = Http::baseUrl($this->baseUrl)
             ->withHeaders($this->options['headers'] ?? [])
-            ->send($method, $url, $this->mergeQuery($options));
+            ->send($method, $url, $options);
 
-        if ($error = data_get($response->json(), '0.error_code')) {
-            $message = "Brightcove Api Error: ($error) status: {$response->status()}.\n
-                    Request: {$method} {$this->baseUrl}/{$url}\n
-                    Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
-                    Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
-                ";
-
-
-            if ($response->status() == 404) {
-                throw new NotFoundException($message);
-            }
-
-            throw new Exception($message);
+        if ($response->json('0.error_code')) {
+            $this->handleException($response, $options);
         }
+
 
         if (!$this->skip_hydration) {
             $data_key = $this->getResponseDataKey();
@@ -458,5 +449,21 @@ class BrightcoveApi extends PendingRequest
         $time = $time->format('Y-m-d\T00:00:00.000\Z');
 
         return $this->where('created_at', "[* TO $time]");
+    }
+
+    private function handleException(Response $response, $options)
+    {
+        $request = $response->transferStats->getRequest();
+        $error = $response->json('0.error_code');
+        $message = "Brightcove Api Error: ($error) status: {$response->status()}.\n
+                Request: {$request->getMethod()} {$this->baseUrl}/{$request->getUri()->getPath()}\n
+                Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
+                Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
+            ";
+
+        match((int)$response->status()){
+            404 => throw new NotFoundException($message),
+            default => throw new Exception($message)
+        };
     }
 }
