@@ -119,6 +119,7 @@ class BrightcoveApi extends PendingRequest
     public function videos($video_id = null)
     {
         return $this->cms()
+            ->resetQuery()
             ->hydrateWith(Video::class)
             ->path($video_id ? "videos/$video_id" : "videos");
     }
@@ -461,11 +462,19 @@ class BrightcoveApi extends PendingRequest
                 Request: {$request->getMethod()} {$this->baseUrl}/{$request->getUri()->getPath()}\n
                 Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
                 Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
+                Response: " . json_encode($response->json(), JSON_PRETTY_PRINT) . "\n
             ";
 
         match((int)$response->status()){
             404 => throw new NotFoundException($message),
             default => throw new Exception($message)
         };
+    }
+
+    private function resetQuery()
+    {
+        $this->query = [];
+
+        return $this;
     }
 }
