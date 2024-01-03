@@ -4,7 +4,7 @@ use Frc\Brightcove\BrightcoveApi;
 use Illuminate\Database\Eloquent\Concerns\HasAttributes;
 use Illuminate\Support\Str;
 
-class BrightcoveModel
+class BrightcoveModel implements \ArrayAccess
 {
     use HasAttributes;
 
@@ -90,4 +90,24 @@ class BrightcoveModel
         return $this->attributesToArray();
     }
 
+
+    public function offsetExists($offset): bool
+    {
+        return isset($this->attributes[$offset]);
+    }
+
+    public function offsetGet($offset): mixed
+    {
+        return $this->attributes[$offset];
+    }
+
+    public function offsetSet($offset, $value): void
+    {
+        $this->attributes[$offset] = $value;
+    }
+
+    public function offsetUnset($offset): void
+    {
+        unset($this->attributes[$offset]);
+    }
 }
