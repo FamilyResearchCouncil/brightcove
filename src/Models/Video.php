@@ -1,5 +1,6 @@
 <?php namespace Frc\Brightcove\Models;
 
+use Frc\Brightcove\Brightcove;
 use Frc\Oracle\Models\Frc\Item;
 use Frc\Oracle\Models\Frc\ItemAttribute;
 use Frc\Oracle\Models\Frc\ItemPublication;
@@ -27,6 +28,10 @@ class Video extends BrightcoveModel
         });
     }
 
+    public function addToFolder($folder_id)
+    {
+        return Brightcove::addVideoToFolder($this->id, $folder_id);
+    }
 
     public function isNew()
     {
