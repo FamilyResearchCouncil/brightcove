@@ -145,15 +145,21 @@ class BrightcoveApi extends PendingRequest
         return $this;
     }
 
-    public function upload($from_url)
+    public function upload($from_url, $thumbnail, $notifications = false)
     {
         return $this->post('ingest-requests', [
             'master'    => [
                 "url" => rtrim($from_url, '#')
             ],
             'callbacks' => [
-                'https://api.frc.org/webhooks/brightcove/ingest-notifications'
-            ]
+                url('/api/webhooks/brightcove/ingest-notifications')
+            ],
+            'poster' => [
+                "url" => $thumbnail
+            ],
+            'thumbnail' => [
+                "url" => $thumbnail
+            ],
         ]);
     }
 
