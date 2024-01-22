@@ -3,6 +3,8 @@
 use App\Models\Brightcove\Model;
 use App\Support\Http\Client\Client;
 use App\Support\Http\Client\PendingRequest;
+use Aws\S3\MultipartUploader;
+use Aws\S3\S3Client;
 use Carbon\Carbon;
 use Exception;
 use Frc\Brightcove\Exceptions\NotFoundException;
@@ -145,6 +147,28 @@ class BrightcoveApi extends PendingRequest
         return $this;
     }
 
+
+    public function uploadVideoFile($video_id, $file_path, $source_name)
+    {
+        $s3_details = Http::withToken($this->accessToken())
+            ->get("https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name");
+
+        $uploader = new MultipartUploader(new S3Client([
+            'version'     => 'latest',
+            'region'      => 'us-east-1',
+            'credentials' => [
+                'key'    => $s3_details->json('access_key_id'),
+                'secret' => $s3_details->json('secret_access_key'),
+                'token'  => $s3_details->json('session_token'),
+            ]
+        ]), $file_path, [
+            'bucket' => $s3_details->json('bucket'),
+            'key'    => $s3_details->json('object_key'),
+        ]);
+
+        return $uploader->upload();
+    }
+
     public function upload($from_url, $thumbnail, $notifications = false)
     {
         return $this->post('ingest-requests', [
@@ -154,7 +178,7 @@ class BrightcoveApi extends PendingRequest
             'callbacks' => [
                 url('/api/webhooks/brightcove/ingest-notifications')
             ],
-            'poster' => [
+            'poster'    => [
                 "url" => $thumbnail
             ],
             'thumbnail' => [
@@ -476,7 +500,7 @@ class BrightcoveApi extends PendingRequest
                 Response: " . json_encode($response->json(), JSON_PRETTY_PRINT) . "\n
             ";
 
-        match((int)$response->status()){
+        match ((int)$response->status()) {
             404 => throw new NotFoundException($message),
             default => throw new Exception($message)
         };

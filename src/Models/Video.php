@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Carbon;
 
 /**
+ * @property $id
  * @property Carbon $created_at
  */
 class Video extends BrightcoveModel
