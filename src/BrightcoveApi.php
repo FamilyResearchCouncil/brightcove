@@ -16,7 +16,9 @@ use Frc\Brightcove\Models\Video;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Request;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
@@ -27,8 +29,9 @@ class BrightcoveApi extends PendingRequest
     private string $client_secret;
     private string $account_id;
     private string $live_api_key;
-    private $response_data_key;
     private bool $skip_hydration = false;
+    private bool $useJwt = false;
+    private $response_data_key;
     private $hydration_class;
 
     public array $query = [];
@@ -231,9 +234,13 @@ class BrightcoveApi extends PendingRequest
 
         }
 
-        $this->baseUrl(trim($base_url, '/') . "/{$this->getPath()}");
+        $this->baseUrl(
+            $base_url . '/' . str($this->getPath())->explode('/')->filter()->join('/')
+        );
 
-        $options = $this->mergeQuery($options);
+        if ($this->useJwt) {
+            $options = $this->appendJwtToQuery($options);
+        }
 
         $response = Http::baseUrl($this->baseUrl)
             ->withHeaders($this->options['headers'] ?? [])
@@ -304,7 +311,7 @@ class BrightcoveApi extends PendingRequest
 
     public function accessToken()
     {
-        return \Cache::remember("brightcove-token-" . $this->client_id, 300, function () {
+        return Cache::remember("brightcove-token-" . $this->client_id, 300, function () {
             return Http::asJson()->withBasicAuth($this->client_id, $this->client_secret)
                 ->post("https://oauth.brightcove.com/v4/access_token?grant_type=client_credentials")
                 ->json('access_token');
@@ -489,16 +496,14 @@ class BrightcoveApi extends PendingRequest
 
     private function handleException(Response $response, $options)
     {
+        /** @var \GuzzleHttp\Psr7\Request $request */
         $request = $response->transferStats->getRequest();
         $error = $response->json('0.error_code');
         $message = $response->json('0.message');
 
-        $message = "Brightcove $error ({$response->status()}): $message.\n
-                Request: {$request->getMethod()} {$this->baseUrl}/{$request->getUri()->getPath()}\n
-                Options: " . json_encode($options, JSON_PRETTY_PRINT) . "\n
-                Api: " . json_encode($this, JSON_PRETTY_PRINT) . "\n
-                Response: " . json_encode($response->json(), JSON_PRETTY_PRINT) . "\n
-            ";
+
+        $message = "\nBrightcove $error ({$response->status()}): $message
+            Request: {$request->getMethod()} {$request->getUri()}\nOptions: " . json_encode($options, JSON_PRETTY_PRINT) . "\nApi: " . json_encode($this, JSON_PRETTY_PRINT) . "\nResponse: " . json_encode($response->json(), JSON_PRETTY_PRINT);
 
         match ((int)$response->status()) {
             404 => throw new NotFoundException($message),
@@ -511,5 +516,59 @@ class BrightcoveApi extends PendingRequest
         $this->query = [];
 
         return $this;
+    }
+
+    public function withJwt()
+    {
+        $this->useJwt = true;
+
+        return $this;
+    }
+
+    public function appendJwtToQuery($options)
+    {
+        data_set($options, 'query.bcov_auth', $this->createJwt());
+
+        return $options;
+    }
+
+    public function createJwt()
+    {
+        return Cache::remember('brightcove_jwt', now()->addDay(), function () {
+            $disk = \Storage::disk('keys');
+            $public_key = $disk->get('brightcove/public_key.txt');
+
+            // register the public key with brightcove
+            // get the first key
+            $response = Http::withToken($this->accessToken())
+                ->contentType('application/json')
+                ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys")
+                ->collect()->first()['value'] ?? null;
+
+            if (!$response) {
+                // add the key
+                $response = Http::withToken($this->accessToken())
+                    ->contentType('application/json')
+                    ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
+                        'value' => $public_key
+                    ])->json('value');
+            }
+
+            // put in public_key.txt
+            $disk->put('brightcove/public_key.txt', $response);
+
+
+            // set up the jwt
+            $process = Process::run("./jwtgen.sh $this->account_id ".$disk->path('brightcove/public_key.txt'));
+
+
+            if ($process->failed()) {
+                throw new \Exception($process->errorOutput());
+            }
+
+            $jwt_data = json_decode($process->output());
+
+            return $jwt_data->signature.'.'.$jwt_data->unsigned_jwt;
+        });
     }
 }

@@ -5,10 +5,12 @@ use Frc\Oracle\Models\Frc\Item;
 use Frc\Oracle\Models\Frc\ItemAttribute;
 use Frc\Oracle\Models\Frc\ItemPublication;
 use Frc\Oracle\Models\Frc\RelatedItem;
+use Frc\Oracle\Models\ItemBase;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Carbon;
 
 /**
+ *
  * @property $id
  * @property Carbon $created_at
  */
@@ -125,5 +127,15 @@ class Video extends BrightcoveModel
             'item_desc'        => "(Download Video) $lr_item->item_desc",
             'master_item_code' => $lr_item->item_code
         ]);
+    }
+
+    public function getAssets()
+    {
+        return Brightcove::videos($this->id)->withoutHydrating()->get('/assets')->json();
+    }
+
+    public function getSources()
+    {
+        return Brightcove::videos($this->id)->withoutHydrating()->get('/sources')->json();
     }
 }
