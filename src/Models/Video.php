@@ -181,7 +181,11 @@ class Video extends BrightcoveModel
 
     public function setScheduleAttribute(array $value)
     {
-        $value = collect($value)->map(function (string $v, $key) {
+        $value = collect($value)->map(function ($v, $key) {
+            if (!$v) {
+               return $v;
+            }
+            
             return Carbon::parse($v)->timezone('+05')->toIso8601String();
         })->toArray();
         
