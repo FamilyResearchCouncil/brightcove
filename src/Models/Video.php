@@ -138,4 +138,9 @@ class Video extends BrightcoveModel
     {
         return Brightcove::videos($this->id)->withoutHydrating()->get('/sources')->json();
     }
+
+    public function delete()
+    {
+        return Brightcove::videos()->delete($this->brightcove_id);
+    }
 }
