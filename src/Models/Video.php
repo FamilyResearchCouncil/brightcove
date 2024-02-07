@@ -142,7 +142,7 @@ class Video extends BrightcoveModel
 
     public function delete()
     {
-        return Brightcove::videos()->delete($this->brightcove_id);
+        return Brightcove::videos()->delete($this->id);
     }
 
     public function update()
