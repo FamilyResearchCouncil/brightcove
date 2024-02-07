@@ -143,4 +143,34 @@ class Video extends BrightcoveModel
     {
         return Brightcove::videos()->delete($this->brightcove_id);
     }
+
+    public function update()
+    {
+        return Brightcove::videos()->update($this->brightcove_id, collect($this->getDirty())->only(
+            "ad_keys",
+            "cue_points",
+            "custom_fields",
+            "description",
+            "drm_disabled",
+            "economics",
+            "geo",
+            "labels",
+            "link",
+            "long_description",
+            "name",
+            "offline_enabled",
+            "playback_rights_id",
+            "projection",
+            "published_at",
+            "reference_id",
+            "schedule",
+            "state",
+            "tags",
+            "text_tracks",
+            "transcripts",
+            "variants",
+        )->toArray());
+    }
+
+
 }

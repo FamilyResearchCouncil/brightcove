@@ -16,6 +16,8 @@ class BrightcoveModel implements \ArrayAccess
         $this->fill($attributes);
 
         $this->api = $api_client ?? app()->make('brightcove');
+        
+        $this->syncOriginal();
     }
 
 

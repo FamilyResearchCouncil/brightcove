@@ -248,7 +248,7 @@ class BrightcoveApi extends PendingRequest
         }
 
 
-        if (!$this->skip_hydration) {
+        if ($this->shouldHydrate()) {
             $data_key = $this->getResponseDataKey();
 
             $data = $response->json($data_key)
@@ -270,6 +270,11 @@ class BrightcoveApi extends PendingRequest
 
 
         return $response;
+    }
+
+    public function shouldHydrate(): bool
+    {
+        return !$this->skip_hydration;
     }
 
     public function paginate(callable $closure, string $path = null, array $query = []): void
