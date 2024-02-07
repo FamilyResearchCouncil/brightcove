@@ -239,6 +239,7 @@ class BrightcoveApi extends PendingRequest
         }
 
         $response = Http::baseUrl($this->baseUrl)
+            ->when($this->throwCallback, fn($http) => $http->throw())
             ->timeout(30)
             ->withHeaders($this->options['headers'] ?? [])
             ->send($method, $url, $options);
@@ -372,7 +373,6 @@ class BrightcoveApi extends PendingRequest
     public function hydrateWith($class, $data_key = null)
     {
         $this->hydration_class = $class;
-        $this->skip_hydration = false;
 
         if ($data_key) {
             $this->response_data_key = $data_key;

@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  *
  * @property $id
  * @property Carbon $created_at
+ * @property Carbon $schedule
  */
 class Video extends BrightcoveModel
 {
@@ -146,7 +147,7 @@ class Video extends BrightcoveModel
 
     public function update()
     {
-        return Brightcove::videos()->update($this->brightcove_id, collect($this->getDirty())->only(
+        $attributes = collect($this->getDirty())->only(
             "ad_keys",
             "cue_points",
             "custom_fields",
@@ -169,7 +170,22 @@ class Video extends BrightcoveModel
             "text_tracks",
             "transcripts",
             "variants",
-        )->toArray());
+        )->toArray();
+
+        $res = Brightcove::withoutHydrating()->videos()->throw()->update($this->id, $attributes);
+
+        $this->fill($res->json())->syncOriginal();
+
+        return $this;
+    }
+
+    public function setScheduleAttribute(array $value)
+    {
+        $value = collect($value)->map(function (string $v, $key) {
+            return Carbon::parse($v)->timezone('+05')->toIso8601String();
+        })->toArray();
+        
+        $this->attributes['schedule'] = $value;
     }
 
 

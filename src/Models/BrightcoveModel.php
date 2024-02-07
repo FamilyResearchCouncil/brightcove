@@ -16,7 +16,7 @@ class BrightcoveModel implements \ArrayAccess
         $this->fill($attributes);
 
         $this->api = $api_client ?? app()->make('brightcove');
-        
+
         $this->syncOriginal();
     }
 
@@ -87,6 +87,11 @@ class BrightcoveModel implements \ArrayAccess
         return false;
     }
 
+    public function relationResolver()
+    {
+        return null;
+    }
+
     public function toArray()
     {
         return $this->attributesToArray();
@@ -111,5 +116,10 @@ class BrightcoveModel implements \ArrayAccess
     public function offsetUnset($offset): void
     {
         unset($this->attributes[$offset]);
+    }
+
+    protected function throwMissingAttributeExceptionIfApplicable($key)
+    {
+        return null;
     }
 }
