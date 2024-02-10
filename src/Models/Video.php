@@ -185,12 +185,18 @@ class Video extends BrightcoveModel
             if (!$v) {
                return $v;
             }
-            
+
             return Carbon::parse($v)->timezone('+05')->toIso8601String();
         })->toArray();
-        
+
         $this->attributes['schedule'] = $value;
     }
 
+    public function staticUrl()
+    {
+        $api = Brightcove::playback();
+        $jwt =  $api->createJwt();
 
+        return $api->get("high.mp4?bcov_auth=$jwt")->json();
+    }
 }
