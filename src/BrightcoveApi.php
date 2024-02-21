@@ -243,7 +243,7 @@ class BrightcoveApi extends PendingRequest
             ->when($this->throwCallback, fn($http) => $http->throw())
             ->timeout(30)
             ->withHeaders($this->options['headers'] ?? [])
-            ->$method($url, $options);
+            ->send($method, $url, $options);
 
         if ($response->json('0.error_code')) {
             $this->handleException($response, $options);
