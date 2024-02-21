@@ -272,6 +272,7 @@ class BrightcoveApi extends PendingRequest
 
         // reset
         $this->skip_hydration = false;
+        $this->path = '';
 
         return $response;
     }
