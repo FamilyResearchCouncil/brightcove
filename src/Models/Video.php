@@ -145,8 +145,10 @@ class Video extends BrightcoveModel
         return Brightcove::videos()->delete($this->id);
     }
 
-    public function update()
+    public function update($attributes = [])
     {
+        $this->fill($attributes);
+
         $attributes = collect($this->getDirty())->only(
             "ad_keys",
             "cue_points",
@@ -179,7 +181,7 @@ class Video extends BrightcoveModel
         return $this;
     }
 
-    public function setScheduleAttribute(array $value)
+    public function setScheduleAttribute(?array $value)
     {
         $value = collect($value)->map(function ($v, $key) {
             if (!$v) {
@@ -195,8 +197,9 @@ class Video extends BrightcoveModel
     public function staticUrl()
     {
         $api = Brightcove::playback();
-        $jwt =  $api->createJwt();
+        $base_url = $api->buildBaseUrl();
+        $jwt = $api->createJwt();
 
-        return $api->get("high.mp4?bcov_auth=$jwt")->json();
+        return "$base_url/videos/$this->id/high.mp4?bcov_auth=$jwt";
     }
 }

@@ -169,7 +169,7 @@ class BrightcoveApi extends PendingRequest
 
     public function upload($from_url, $thumbnail, $notifications = false)
     {
-        return $this->post('ingest-requests', [
+        return $this->send('post', 'ingest-requests', [
             'profile' => 'multi-platform-standard-static-with-mp4',
             'master'    => [
                 "url" => rtrim($from_url, '#')
@@ -239,10 +239,11 @@ class BrightcoveApi extends PendingRequest
         }
 
         $response = Http::baseUrl($this->baseUrl)
+            ->asJson()
             ->when($this->throwCallback, fn($http) => $http->throw())
             ->timeout(30)
             ->withHeaders($this->options['headers'] ?? [])
-            ->send($method, $url, $options);
+            ->$method($url, $options);
 
         if ($response->json('0.error_code')) {
             $this->handleException($response, $options);
@@ -273,6 +274,11 @@ class BrightcoveApi extends PendingRequest
         $this->skip_hydration = false;
 
         return $response;
+    }
+
+    public function buildBaseUrl()
+    {
+        return "https://$this->subdomain.$this->domain/$this->version/accounts/$this->account_id";
     }
 
     public function shouldHydrate(): bool
@@ -369,7 +375,7 @@ class BrightcoveApi extends PendingRequest
 
     public function create(array $data): Video
     {
-        return $this->post('', $data);
+        return $this->send('POST', '', $data);
     }
 
     public function hydrateWith($class, $data_key = null)
@@ -543,29 +549,25 @@ class BrightcoveApi extends PendingRequest
             $disk = \Storage::disk('keys');
             $public_key = $disk->get('brightcove/public_key.txt');
 
-            // delete the existing keys
+            // get the existing key
             $existing = Http::withToken($this->accessToken())
                 ->contentType('application/json')
                 ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys")
-                ->collect();
+                ->collect()
+                ->first(fn($record) => str($record['value'] ?? null)->is($public_key));
 
-            $existing->each(function ($r) {
-                    $id = $r['id'];
-                    // delete
-                    Http::withToken($this->accessToken())
-                        ->contentType('application/json')
-                        ->delete("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys/$id");
-                });
 
-            $response = Http::withToken($this->accessToken())
-                ->throw()
-                ->contentType('application/json')
-                ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
-                    'value' => $public_key
-                ]);
+            if (!$existing) {
+                $response = Http::withToken($this->accessToken())
+                    ->throw()
+                    ->contentType('application/json')
+                    ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
+                        'value' => $public_key
+                    ]);
 
-            if($response->json('value') !== $public_key) {
-                throw new \Exception("The created key does not match the public key. Created: $response, Public: " . $public_key);
+                if($response->json('value') !== $public_key) {
+                    throw new \Exception("The created key does not match the public key. Created: $response, Public: " . $public_key);
+                }
             }
 
             $header = json_encode([
@@ -576,7 +578,6 @@ class BrightcoveApi extends PendingRequest
             $payload = json_encode([
                 'accid' => $this->account_id,
                 'iat' => time(),
-                'exp' => time() + 3600,
             ]);
 
             // Sign the JWT
