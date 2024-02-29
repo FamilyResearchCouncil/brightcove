@@ -156,12 +156,12 @@ class BrightcoveApi extends PendingRequest
             $s3_details = Http::withToken($this->accessToken())
                 ->retry(5, sleepMilliseconds: 5000)
                 ->get($ingestUrl = "https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name")
-                ->collect()->only('access_key_id', 'secret_access_key', 'session_token');
+                ->collect();
         } catch (\Throwable $e) {
             throw new \Exception("Failed to get the s3 details for the video upload: " . $e->getMessage(). " URL: $ingestUrl");
         }
 
-        if ($s3_details->count() !== 3) {
+        if ($s3_details->isEmpty()) {
             throw new \Exception("Failed to get the s3 details for the video upload: " . $s3_details->toJson(). "URL: $ingestUrl");
         }
 
@@ -169,13 +169,13 @@ class BrightcoveApi extends PendingRequest
             'version'     => 'latest',
             'region'      => 'us-east-1',
             'credentials' => [
-                'key'    => $s3_details->json('access_key_id'),
-                'secret' => $s3_details->json('secret_access_key'),
-                'token'  => $s3_details->json('session_token'),
+                'key'    => $s3_details->get('access_key_id'),
+                'secret' => $s3_details->get('secret_access_key'),
+                'token'  => $s3_details->get('session_token'),
             ]
         ]), $file_path, [
-            'bucket' => $s3_details->json('bucket'),
-            'key'    => $s3_details->json('object_key'),
+            'bucket' => $s3_details->get('bucket'),
+            'key'    => $s3_details->get('object_key'),
         ]);
 
         return $uploader->upload();
