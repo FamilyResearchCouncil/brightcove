@@ -558,7 +558,7 @@ class BrightcoveApi extends PendingRequest
 
     public function createJwt()
     {
-        return Cache::remember('brightcove_jwt', now()->addminutes(59), function () {
+        return Cache::remember('brightcove_jwt', now()->addminutes(1), function () {
 
             $disk = \Storage::disk('keys');
             $public_key = $disk->get('brightcove/public_key.txt');
