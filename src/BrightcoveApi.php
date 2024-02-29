@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Request;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class BrightcoveApi extends PendingRequest
 {
@@ -151,12 +152,12 @@ class BrightcoveApi extends PendingRequest
 
     public function uploadVideoFile($video_id, $file_path, $source_name)
     {
-        $s3_details = retry(3, function () {
+        $s3_details = retry(3, function () use ($video_id, $file_path, $source_name) {
             return Http::withToken($this->accessToken())
                 ->throw()
                 ->get("https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name")
                 ->collect()->only('access_key_id', 'secret_access_key', 'session_token');
-        }, 5);
+        }, 5000);
 
         if ($s3_details->count() !== 3) {
             throw new \Exception("Failed to get the s3 details for the video upload: " . $s3_details->toJson());
