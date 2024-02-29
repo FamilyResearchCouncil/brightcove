@@ -597,7 +597,7 @@ class BrightcoveApi extends PendingRequest
             ]);
 
             // Sign the JWT
-            $result = Process::run("./jwtgen.sh $header $payload {$disk->path('brightcove/private.pem')}");
+            $result = Process::run("/var/www/html/jwtgen.sh $header $payload {$disk->path('brightcove/private.pem')}");
 
 
             if ($result->failed()) {
