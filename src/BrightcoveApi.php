@@ -60,13 +60,14 @@ class BrightcoveApi extends PendingRequest
         return $this;
     }
 
-    public function addVideoToFolder($video_id = null, $folder_id = null)
+    public function reset(): BrightcoveApi
     {
-        if (isset($folder_id, $video_id)) {
-            return $this->folderVideos($folder_id)->put($video_id);
-        }
+        return app('brightcove');
+    }
 
-        return $this;
+    public function addVideoToFolder($video_id, $folder_id)
+    {
+        return $this->reset()->withoutHydrating()->folderVideos($folder_id)->throw()->put($video_id);
     }
 
     public function live()

@@ -34,7 +34,11 @@ class Video extends BrightcoveModel
 
     public function addToFolder($folder_id)
     {
-        return Brightcove::addVideoToFolder($this->id, $folder_id);
+        Brightcove::addVideoToFolder($this->id, $folder_id);
+
+        $this->folder_id = $folder_id;
+
+        return $this;
     }
 
     public function isNew()
@@ -174,7 +178,8 @@ class Video extends BrightcoveModel
             "variants",
         )->toArray();
 
-        $res = Brightcove::withoutHydrating()->videos()->throw()->update($this->id, $attributes);
+
+        $res = Brightcove::reset()->withoutHydrating()->videos()->throw()->update($this->id, $attributes);
 
         $this->fill($res->json())->syncOriginal();
 
