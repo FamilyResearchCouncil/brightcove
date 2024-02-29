@@ -152,15 +152,16 @@ class BrightcoveApi extends PendingRequest
 
     public function uploadVideoFile($video_id, $file_path, $source_name)
     {
-        $s3_details = retry(3, function () use ($video_id, $file_path, $source_name) {
+        $ingestUrl = "https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name";
+        $s3_details = retry(3, function () use ($video_id, $file_path, $source_name, $ingestUrl) {
             return Http::withToken($this->accessToken())
                 ->throw()
-                ->get("https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name")
+                ->get($ingestUrl)
                 ->collect()->only('access_key_id', 'secret_access_key', 'session_token');
         }, 5000);
 
         if ($s3_details->count() !== 3) {
-            throw new \Exception("Failed to get the s3 details for the video upload: " . $s3_details->toJson());
+            throw new \Exception("Failed to get the s3 details for the video upload: " . $s3_details->toJson(). "URL: $ingestUrl");
         }
 
         $uploader = new MultipartUploader(new S3Client([
