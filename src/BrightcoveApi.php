@@ -558,55 +558,52 @@ class BrightcoveApi extends PendingRequest
 
     public function createJwt()
     {
-        return Cache::remember('brightcove_jwt', now()->addminutes(1), function () {
+        $disk = \Storage::disk('keys');
+        $public_key = $disk->get('brightcove/public_key.txt');
 
-            $disk = \Storage::disk('keys');
-            $public_key = $disk->get('brightcove/public_key.txt');
-
-            // delete the existing keys
-            Http::withToken($this->accessToken())
-                ->contentType('application/json')
-                ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys")
-                ->collect()->each(function ($record) {
-                    Http::withToken($this->accessToken())
-                        ->throw()
-                        ->delete("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys/{$record['id']}");
-                });
+        // delete the existing keys
+        Http::withToken($this->accessToken())
+            ->contentType('application/json')
+            ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys")
+            ->collect()->each(function ($record) {
+                Http::withToken($this->accessToken())
+                    ->throw()
+                    ->delete("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys/{$record['id']}");
+            });
 
 
-            // create
-            $response = Http::withToken($this->accessToken())
-                ->throw()
-                ->contentType('application/json')
-                ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
-                    'value' => $public_key
-                ]);
-
-            if($response->json('value') !== $public_key) {
-                throw new \Exception("The created key does not match the public key. Created: $response, Public: " . $public_key);
-            }
-
-            $header = json_encode([
-                'type' => 'JWT',
-                'alg'  => 'RS256',
+        // create
+        $response = Http::withToken($this->accessToken())
+            ->throw()
+            ->contentType('application/json')
+            ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
+                'value' => $public_key
             ]);
 
-            $payload = json_encode([
-                'accid' => $this->account_id,
-                'iat' => time(),
-            ]);
+        if($response->json('value') !== $public_key) {
+            throw new \Exception("The created key does not match the public key. Created: $response, Public: " . $public_key);
+        }
 
-            // Sign the JWT
-            $result = Process::run("/var/www/html/jwtgen.sh $header $payload {$disk->path('brightcove/private.pem')}");
+        $header = json_encode([
+            'type' => 'JWT',
+            'alg'  => 'RS256',
+        ]);
+
+        $payload = json_encode([
+            'accid' => $this->account_id,
+            'iat' => time(),
+        ]);
+
+        // Sign the JWT
+        $result = Process::run("/var/www/html/jwtgen.sh $header $payload {$disk->path('brightcove/private.pem')}");
 
 
-            if ($result->failed()) {
-                $output = empty($result->errorOutput()) ? $result->output() : $result->errorOutput();
-                throw new \Exception("Failed to sign the JWT: $output");
-            }
+        if ($result->failed()) {
+            $output = empty($result->errorOutput()) ? $result->output() : $result->errorOutput();
+            throw new \Exception("Failed to sign the JWT: $output");
+        }
 
-            return $result->output();
-        });
+        return $result->output();
     }
 
     public function update($id, $data)
