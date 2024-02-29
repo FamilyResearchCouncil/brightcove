@@ -5,6 +5,7 @@ use App\Support\Http\Client\Client;
 use App\Support\Http\Client\PendingRequest;
 use Aws\S3\MultipartUploader;
 use Aws\S3\S3Client;
+use Brightcove\API\DI;
 use Carbon\Carbon;
 use Exception;
 use Frc\Brightcove\Exceptions\NotFoundException;
@@ -150,10 +151,12 @@ class BrightcoveApi extends PendingRequest
 
     public function uploadVideoFile($video_id, $file_path, $source_name)
     {
-        $s3_details = Http::withToken($this->accessToken())
-            ->throw()
-            ->get("https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name")
-            ->collect()->only('access_key_id', 'secret_access_key', 'session_token');
+        $s3_details = retry(3, function () {
+            return Http::withToken($this->accessToken())
+                ->throw()
+                ->get("https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name")
+                ->collect()->only('access_key_id', 'secret_access_key', 'session_token');
+        }, 5);
 
         if ($s3_details->count() !== 3) {
             throw new \Exception("Failed to get the s3 details for the video upload: " . $s3_details->toJson());
