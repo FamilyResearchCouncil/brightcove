@@ -151,6 +151,7 @@ class BrightcoveApi extends PendingRequest
     public function uploadVideoFile($video_id, $file_path, $source_name)
     {
         $s3_details = Http::withToken($this->accessToken())
+            ->throw()
             ->get("https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name")
             ->collect()->only('access_key_id', 'secret_access_key', 'session_token');
 
