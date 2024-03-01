@@ -201,7 +201,8 @@ class Video extends BrightcoveModel
 
     public function staticUrl()
     {
-        $api = Brightcove::playback();
+        $api = Brightcove::subdomain('edge.api');
+        
         $base_url = $api->buildBaseUrl();
         $jwt = $api->createJwt();
 
