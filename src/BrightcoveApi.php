@@ -561,28 +561,28 @@ class BrightcoveApi extends PendingRequest
         $disk = \Storage::disk('keys');
         $public_key = $disk->get('brightcove/public_key.txt');
 
-        // delete the existing keys
-        Http::withToken($this->accessToken())
-            ->contentType('application/json')
-            ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys")
-            ->collect()->each(function ($record) {
-                Http::withToken($this->accessToken())
-                    ->throw()
-                    ->delete("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys/{$record['id']}");
-            });
-
-
-        // create
-        $response = Http::withToken($this->accessToken())
-            ->throw()
-            ->contentType('application/json')
-            ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
-                'value' => $public_key
-            ]);
-
-        if($response->json('value') !== $public_key) {
-            throw new \Exception("The created key does not match the public key. Created: $response, Public: " . $public_key);
-        }
+//        // delete the existing keys
+//        Http::withToken($this->accessToken())
+//            ->contentType('application/json')
+//            ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys")
+//            ->collect()->each(function ($record) {
+//                Http::withToken($this->accessToken())
+//                    ->throw()
+//                    ->delete("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys/{$record['id']}");
+//            });
+//
+//
+//        // create
+//        $response = Http::withToken($this->accessToken())
+//            ->throw()
+//            ->contentType('application/json')
+//            ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
+//                'value' => $public_key
+//            ]);
+//
+//        if($response->json('value') !== $public_key) {
+//            throw new \Exception("The created key does not match the public key. Created: $response, Public: " . $public_key);
+//        }
 
         $header = json_encode([
             'type' => 'JWT',
