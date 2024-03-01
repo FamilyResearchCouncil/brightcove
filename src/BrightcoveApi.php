@@ -21,6 +21,12 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Request;
+use MiladRahimi\Jwt\Cryptography\Algorithms\Rsa\RS256Signer;
+use MiladRahimi\Jwt\Cryptography\Algorithms\Rsa\RS256Verifier;
+use MiladRahimi\Jwt\Cryptography\Keys\RsaPrivateKey;
+use MiladRahimi\Jwt\Cryptography\Keys\RsaPublicKey;
+use MiladRahimi\Jwt\Generator;
+use MiladRahimi\Jwt\Parser;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -158,11 +164,11 @@ class BrightcoveApi extends PendingRequest
                 ->get($ingestUrl = "https://ingest.api.brightcove.com/v1/accounts/$this->account_id/videos/$video_id/upload-urls/$source_name")
                 ->collect();
         } catch (\Throwable $e) {
-            throw new \Exception("Failed to get the s3 details for the video upload: " . $e->getMessage(). " URL: $ingestUrl");
+            throw new \Exception("Failed to get the s3 details for the video upload: " . $e->getMessage() . " URL: $ingestUrl");
         }
 
         if ($s3_details->isEmpty()) {
-            throw new \Exception("Failed to get the s3 details for the video upload: " . $s3_details->toJson(). "URL: $ingestUrl");
+            throw new \Exception("Failed to get the s3 details for the video upload: " . $s3_details->toJson() . "URL: $ingestUrl");
         }
 
         $uploader = new MultipartUploader(new S3Client([
@@ -184,7 +190,7 @@ class BrightcoveApi extends PendingRequest
     public function upload($from_url, $thumbnail, $notifications = false)
     {
         return $this->post('ingest-requests', [
-            'profile' => 'multi-platform-standard-static-with-mp4',
+            'profile'   => 'multi-platform-standard-static-with-mp4',
             'master'    => [
                 "url" => rtrim($from_url, '#')
             ],
@@ -527,7 +533,7 @@ class BrightcoveApi extends PendingRequest
 
 
         $message = "\nBrightcove $error ({$response->status()}): $message
-            Request: {$request->getMethod()} {$request->getUri()}\nOptions: " . json_encode($options, JSON_PRETTY_PRINT) . "\nApi: " . json_encode($this, JSON_PRETTY_PRINT) . "\nResponse: " . json_encode($response->json(), JSON_PRETTY_PRINT)."\nHeaders: " . json_encode($request->getheaders(), JSON_PRETTY_PRINT);
+            Request: {$request->getMethod()} {$request->getUri()}\nOptions: " . json_encode($options, JSON_PRETTY_PRINT) . "\nApi: " . json_encode($this, JSON_PRETTY_PRINT) . "\nResponse: " . json_encode($response->json(), JSON_PRETTY_PRINT) . "\nHeaders: " . json_encode($request->getheaders(), JSON_PRETTY_PRINT);
 
         match ((int)$response->status()) {
             404 => throw new NotFoundException($message),
@@ -556,58 +562,98 @@ class BrightcoveApi extends PendingRequest
         return $options;
     }
 
+    public function getKeys()
+    {
+        return Http::withToken($this->accessToken())
+            ->throw()
+            ->contentType('application/json')
+            ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys");
+    }
+
+    public function deleteKey($id)
+    {
+        return Http::withToken($this->accessToken())
+            ->throw()
+            ->delete("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys/{$id}");
+    }
+
+    public function deleteAllKeys()
+    {
+        return $this->getKeys()->collect()
+            ->map->id->map($this->deleteKey(...))
+            ->map->json();
+    }
+
+    public function createKey($public_key)
+    {
+        return Http::withToken($this->accessToken())
+            ->throw()
+            ->contentType('application/json')
+            ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
+                'value' => $public_key
+            ]);
+    }
+
     public function createJwt()
     {
+        $this->ensurePublicKeyExists();
+
+//        $header = json_encode([
+//            'alg' => 'RS256',
+//            'typ' => 'JWT'
+//        ]);
+//
+//        $payload = json_encode([
+//            'accid' => $this->account_id,
+//            'iat'   => time(),
+////            'exp'   => time() + 60 * 60 * 24,
+//        ]);
+//
+//        $one = Process::run("/var/www/html/jwtgen.sh $header $payload /var/www/html/storage/keys/brightcove/private.pem")->output();
+
+        return tap(
+            $this->generateJwt(),
+            $this->verifyJwt(...)
+        );
+    }
+
+    public function generateJwt()
+    {
         $disk = \Storage::disk('keys');
-        $public_key = $disk->get('brightcove/public_key.txt');
 
-//        // delete the existing keys
-//        Http::withToken($this->accessToken())
-//            ->contentType('application/json')
-//            ->get("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys")
-//            ->collect()->each(function ($record) {
-//                Http::withToken($this->accessToken())
-//                    ->throw()
-//                    ->delete("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys/{$record['id']}");
-//            });
-//
-//
-//        // create
-//        $response = Http::withToken($this->accessToken())
-//            ->throw()
-//            ->contentType('application/json')
-//            ->post("https://playback-auth.api.brightcove.com/v1/accounts/$this->account_id/keys", [
-//                'value' => $public_key
-//            ]);
-//
-//        if($response->json('value') !== $public_key) {
-//            throw new \Exception("The created key does not match the public key. Created: $response, Public: " . $public_key);
-//        }
-
-        $header = json_encode([
-            'type' => 'JWT',
-            'alg'  => 'RS256',
-        ]);
-
-        $payload = json_encode([
-            'accid' => $this->account_id,
-            'iat' => time(),
-        ]);
-
-        // Sign the JWT
-        $result = Process::run("/var/www/html/jwtgen.sh $header $payload {$disk->path('brightcove/private.pem')}");
-
-
-        if ($result->failed()) {
-            $output = empty($result->errorOutput()) ? $result->output() : $result->errorOutput();
-            throw new \Exception("Failed to sign the JWT: $output");
+        if(!$disk->exists('brightcove/private.pem')) {
+            throw new \Exception("Private key not found at: " . $disk->path('brightcove/private.pem'));
         }
 
-        return $result->output();
+        return (new Generator(
+            new RS256Signer(
+                new RsaPrivateKey($disk->path('brightcove/private.pem'))
+            )
+        ))->generate();
     }
 
     public function update($id, $data)
     {
         return $this->asJson()->patch($id, $data);
+    }
+
+    public function verifyJwt($jwt)
+    {
+        (new Parser(
+            new RS256Verifier(
+                new RsaPublicKey(\Storage::disk('keys')->path('brightcove/public.pem'))
+            )
+        ))->verify($jwt);
+    }
+
+    public function ensurePublicKeyExists()
+    {
+        $disk = \Storage::disk('keys');
+
+        $this->getKeys()->collect()->filter(function ($record) use ($disk) {
+            return str($disk->get('brightcove/public_key.txt'))->is($record['value']);
+        })->whenEmpty(function () use ($disk) {
+            $this->createKey($disk->get('brightcove/public_key.txt'));
+        });
     }
 }
