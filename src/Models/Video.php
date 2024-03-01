@@ -201,9 +201,8 @@ class Video extends BrightcoveModel
 
     public function staticUrl()
     {
-        $api = Brightcove::subdomain('edge.api');
-        
-        $base_url = $api->buildBaseUrl();
+        $api = Brightcove::playback();
+        $base_url = $api->reset()->buildBaseUrl();
         $jwt = $api->createJwt();
 
         return "$base_url/videos/$this->id/high.mp4?bcov_auth=$jwt";
