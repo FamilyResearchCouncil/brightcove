@@ -178,8 +178,17 @@ class Video extends BrightcoveModel
             "variants",
         )->toArray();
 
+        // add +5 to schedule dates to account for BC UTC adjustment
+        $attributes['schedule'] = collect($attributes['schedule'] ?? null)->map(function ($v, $key) {
+            if (!$v) {
+               return $v;
+            }
+
+            return Carbon::parse($v)->addHours(5)->toIso8601String();
+        })->toArray();
 
         $res = Brightcove::reset()->withoutHydrating()->videos()->throw()->update($this->id, $attributes);
+
 
         $this->fill($res->json())->syncOriginal();
 
@@ -203,7 +212,7 @@ class Video extends BrightcoveModel
     {
         $jwt = Brightcove::createJwt();
         $account_id = config('brightcove.accounts.default.account_id');
-        
+
         return "https://edge.api.brightcove.com/playback/v1/accounts/{$account_id}/videos/{$this->id}/high.mp4?bcov_auth={$jwt}";
     }
 }
