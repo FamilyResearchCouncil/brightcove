@@ -116,10 +116,10 @@ class BrightcoveApi extends PendingRequest
         return $this;
     }
 
-    public function video($video_id): ?Video
+    public function video($video_id, $throw = true): ?Video
     {
         $video = $this->hydrateWith(Video::class)
-            ->throw()
+            ->when($throw, fn($http) => $http->throw())
             ->path('videos')
             ->get($video_id);
         
