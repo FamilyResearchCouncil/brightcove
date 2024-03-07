@@ -123,7 +123,11 @@ class BrightcoveApi extends PendingRequest
             ->path('videos')
             ->get("$video_id");
 
-        return $video->id == $video_id ? $video : null;
+        if ($video instanceof Collection) {
+            $video = $video->first();
+        }
+
+        return $video?->id == $video_id ? $video : null;
     }
 
     public function jobs($id = null, $query = [])
