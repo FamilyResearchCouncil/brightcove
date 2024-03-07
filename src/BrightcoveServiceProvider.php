@@ -22,7 +22,7 @@ class BrightcoveServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->app->singleton('brightcove', function () {
+        $this->app->bind('brightcove', function () {
             $default = config('brightcove.default');
             $config = config("brightcove.accounts.$default");
 
