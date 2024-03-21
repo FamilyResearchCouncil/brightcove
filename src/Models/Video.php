@@ -202,7 +202,7 @@ class Video extends BrightcoveModel
                return $v;
             }
 
-            return Carbon::parse($v)->timezone('+05')->toIso8601String();
+            return Carbon::parse($v)->timezone('+04')->toIso8601String();
         })->toArray();
 
         $this->attributes['schedule'] = $value;
