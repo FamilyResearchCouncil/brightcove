@@ -178,19 +178,20 @@ class Video extends BrightcoveModel
             "variants",
         )->toArray();
 
-        // add +5 to schedule dates to account for BC UTC adjustment
+        // add +4 to schedule dates to account for BC UTC adjustment
         $attributes['schedule'] = collect($attributes['schedule'] ?? null)->map(function ($v, $key) {
             if (!$v) {
                return $v;
             }
 
-            return Carbon::parse($v)->addHours(5)->toIso8601String();
+            return Carbon::parse($v)->addHours(4)->toIso8601String();
         })->toArray();
 
-        $res = Brightcove::reset()->withoutHydrating()->videos()->throw()->update($this->id, $attributes);
+        $response = Brightcove::reset()->withoutHydrating()->videos()->throw()
+            ->update($this->id, $attributes);
 
 
-        $this->fill($res->json())->syncOriginal();
+        $this->fill($response->json())->syncOriginal();
 
         return $this;
     }
