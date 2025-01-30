@@ -442,12 +442,14 @@ class BrightcoveApi extends PendingRequest
 
     public function ensurePolicyKeyHeaderIsPresent()
     {
-        $res = Http::withToken($this->accessToken())->contentType('application/json')->asJson()
-            ->post("https://policy.api.brightcove.com/v1/accounts/$this->account_id/policy_keys", [
-                'key-data' => [
-                    'account-id' => $this->account_id
-                ]
-            ]);
+        $res = Cache::rememberForever('BCOV-Policy', function () {
+            return Http::withToken($this->accessToken())->contentType('application/json')->asJson()
+                ->post("https://policy.api.brightcove.com/v1/accounts/$this->account_id/policy_keys", [
+                    'key-data' => [
+                        'account-id' => $this->account_id
+                    ]
+                ]);
+        });
 
         return $this->withHeaders([
             'BCOV-Policy' => $res->json('key-string')
